@@ -40,22 +40,40 @@ class Graph:
 
     def get_neighbour_colours(self, node):
         """Return the set of colours already used by neighbours of node."""
-        pass
+        out = []
+
+        for adj_node in self.edges[node]:
+            if adj_node in self.colouring:
+                out.append(self.colouring[adj_node])
+
+        return out
 
     def is_valid_colour(self, node, colour):
         """True if no neighbour of node is already assigned this colour."""
-        pass
+        return colour not in self.get_neighbour_colours(node)
 
     def is_fully_coloured(self):
-        pass
+        for node in self.nodes:
+            if self.colouring[node] is None:
+                return False
+
+        return True
+
 
     def is_valid_colouring(self):
         """Check that no two adjacent nodes share a colour."""
-        pass
-    
-    def get_available_colours(self, node, k):
+        for node in self.nodes:
+            if not self.is_valid_colour(node, self.colouring[node]):
+                return False
+
+        return True
+
+    def get_plausible_colours(self, node, k):
         """Return all colours 1..k not yet used by any neighbour of node."""
-        pass
+        neighboring_colours = self.get_neighbour_colours(node)
+        out = [colour for colour in range(k) if colour not in neighboring_colours]
+        
+        return out
 
 # ---------------------------------------------------------------------------
 # Example graph
@@ -84,13 +102,28 @@ def solve_exhaustive(graph, k):
     solutions = []
 
     def recurse(uncoloured, colouring):
-        pass
 
         # Base case: all nodes have been assigned a colour.
+        if graph.is_fully_coloured():
+            if graph.is_valid_colouring():
+                sol = graph.colouring.copy()
+                solutions.append(sol)
+            return
 
         # Pick the next node to colour.
+        current = uncoloured[0]
+        uncoloured_copy = uncoloured.copy()
+        uncoloured_copy = uncoloured_copy[1:]
 
         # Try every colour, valid or not, check constraint at the end.
+        for colour in range(k):
+
+            colouring_copy = colouring.copy()
+            colouring_copy[current] = colour
+            graph.colouring = colouring_copy
+
+            recurse(uncoloured_copy, colouring_copy)
+
 
     recurse(graph.get_uncoloured_nodes(), dict(graph.colouring))
     return solutions
@@ -99,42 +132,43 @@ def solve_exhaustive(graph, k):
 # ---------------------------------------------------------------------------
 # Backtracking
 # ---------------------------------------------------------------------------
-
 def solve_backtracking(graph, k):
-    """Same structure as exhaustive search, but only tries colours that are
-    valid given the current neighbours. Invalid branches are pruned immediately."""
+    """Try every colour for every node. No pruning, invalid colourings are
+    only recorded once the graph is fully coloured. Returns all valid solutions."""
 
     solutions = []
 
     def recurse(uncoloured, colouring):
-        pass
 
         # Base case: all nodes have been assigned a colour.
+        if graph.is_fully_coloured():
+            sol = graph.colouring.copy()
+            solutions.append(sol)
+            return
 
         # Pick the next node to colour.
+        current = uncoloured[0]
+        uncoloured_copy = uncoloured.copy()
+        uncoloured_copy = uncoloured_copy[1:]
 
-        # Only try colours that don't conflict with already-coloured neighbours.
+        # Try every colour, valid or not, check constraint at the end.
+        for colour in graph.get_plausible_colours(current, k):
+
+            colouring_copy = colouring.copy()
+            colouring_copy[current] = colour
+            graph.colouring = colouring_copy
+
+            recurse(uncoloured_copy, colouring_copy)
+
 
     recurse(graph.get_uncoloured_nodes(), dict(graph.colouring))
     return solutions
 
 
 if __name__ == "__main__":
-    from graph_draw import draw, draw_all_solutions
- 
-    g = make_example_graph()
-    draw(g, title="Initial graph, uncoloured")
- 
-    print("--- Exhaustive ---")
-    solutions = solve_exhaustive(g, k=3)
-    print(f"Found {len(solutions)} valid colourings.")
-    draw_all_solutions(g, solutions, title="Exhaustive — all solutions")
- 
-    print()
- 
-    g = make_example_graph()
-    print("--- Backtracking ---")
-    solutions = solve_backtracking(g, k=3)
-    print(f"Found {len(solutions)} valid colourings.")
-    draw_all_solutions(g, solutions, title="Backtracking — all solutions")
- 
+    g = Graph([0, 1, 2, 3], [(0, 1), (0, 2), (0, 3), (1, 2), (2, 3)])
+    solutions_0 = solve_exhaustive(g, 3)
+    g = Graph([0, 1, 2, 3], [(0, 1), (0, 2), (0, 3), (1, 2), (2, 3)])
+    solutions_1 = solve_backtracking(g, 3)
+    print(solutions_0)
+    print(solutions_1)
